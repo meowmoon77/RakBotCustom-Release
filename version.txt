@@ -1,0 +1,3 @@
+0.8.6
+https://github.com/meowmoon77/RakBotCustom-Release/raw/main/RakBotCustom.exe
+https://github.com/meowmoon77/RakBotCustom-Release/raw/main/RakLaunch.exe
