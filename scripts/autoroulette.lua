@@ -1,84 +1,67 @@
--- Скрипт автоматической рулетки + отправка призов в VK
-
 local spin_enabled = true
 local roulette_checked = false
-local roulette_dialog_id = 10294
 
--- НАСТРОЙКИ VK API
-local vk_token = "vk1."
-local vk_peer_id = "301769883"
+-- Настройки ВК
+local vk_token = "token"
+local vk_peer_id = "id" 
 local vk_api_version = "5.199"
 
-function onSetSpawnPos(x, y, z)
-    if spin_enabled and not roulette_checked then
-        roulette_checked = true
-        sendInput("/рулетка")
-    end
-end
-
--- Срабатывает, если бот заспавнился
 function onSpawned()
     if spin_enabled and not roulette_checked then
         roulette_checked = true
         sendInput("/рулетка")
+        
+        -- Через 3 секунды сбрасываем флаг для следующего спавна
+        defCallAdd(3000, false, function()
+            roulette_checked = false
+        end)
     end
 end
 
--- Перехват сообщений сервера
 function onServerMessage(color, message)
     if not spin_enabled then return false end
 
-    -- Проверяем, начинается ли сообщение со слова "Приз:"
     if message:find("^Приз:") then
-        print("Обнаружен выигрыш: " .. message)
+        local serverName = {}
+        serverName[7771] = "Platinum [RP1]"
+        serverName[7772] = "Titanium [RP2]"
+        serverName[7773] = "Chromium [RP3]"
+        serverName[7774] = "Aurum [RP4]"
+        serverName[7775] = "Lithium [RP5]"
         
-        local encoded_message = encodeUrl(message)
-        local random_id = randomNumber(1, 2147483647)
+        local currentPort = getServerPort()
+        local currentServerName = serverName[currentPort] or ("Unknown")
+
+        local params = {
+            peer_id = vk_peer_id,
+            message = getNickName() .. "\\n" .. currentServerName .. "\\n" .. message,
+            random_id = randomNumber(1, 2147483647),
+            access_token = vk_token,
+            v = vk_api_version
+        }
         
-        local url = string.format(
-            "https://api.vk.com/method/messages.send?access_token=%s&v=%s&peer_id=%s&message=%s&random_id=%d",
-            vk_token, vk_api_version, vk_peer_id, encoded_message, random_id
-        )
+        local response, status = postUrl("https://api.vk.com/method/messages.send", params)
         
-        local response, code = getUrl(url)
-        
-        if code == 0 then
+        if status == 0 then
             if response:find('"error"') then
                 print("[VK] Ошибка API: " .. response)
             else
-                print("[VK] Сообщение успешно отправлено в VK")
+                print("[VK] Приз отправлен в VK")
             end
         else
-            print("[VK] Ошибка HTTP-запроса. Код: " .. tostring(code))
+            print("[VK] Ошибка HTTP: " .. tostring(status))
         end
-        
-        return false
+        return true
     end
 
     if message:find("Рулетка готова") or message:find("Дополнительная прокрутка") then
-        sendInput("/рулетка")
-        return true 
+        roulette_checked = false
+        if spin_enabled then sendInput("/рулетка") end
     end
-    
-    return false
 end
 
--- Перехват открытия диалогов
-function onDialogShow(id, style, title, ok_text, cancel_text, text)
-    if not spin_enabled then return false end
-
-    if id == roulette_dialog_id and text:find("Крутить") then
-        sendDialog(id, 1, 0xFFFF, "")
-        return true 
-    end
-    
-    return false
-end
-
--- Срабатывает при загрузке скрипта
 function onScriptStart()
 end
 
--- Срабатывает при выгрузке скрипта
 function onScriptExit()
 end
